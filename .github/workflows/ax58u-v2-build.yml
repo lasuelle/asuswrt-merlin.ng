@@ -48,16 +48,19 @@ jobs:
           echo "LANG=C" >> $GITHUB_ENV
 
       # ✅ INSTALL REQUIRED MERLIN TOOLCHAIN
-      - name: Install Broadcom ARM Toolchain (robust)
+      - name: Install Broadcom ARM Toolchain (WORKING SOURCE)
         run: |
           sudo mkdir -p /opt/toolchains
           cd /opt/toolchains
 
-          echo "Downloading toolchain..."
           sudo apt install -y curl xz-utils
 
+          echo "Downloading toolchain..."
           sudo curl -L -o toolchain.tar.xz \
-            https://github.com/RMerl/asuswrt-merlin.ng/releases/download/tools/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32.tar.xz
+            https://downloads.sourceforge.net/project/asuswrt-merlin-toolchains/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32.tar.xz
+
+          echo "Verifying download size:"
+          ls -lh toolchain.tar.xz
 
           echo "Extracting..."
           sudo tar -xf toolchain.tar.xz
