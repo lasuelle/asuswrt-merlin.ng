@@ -44,14 +44,21 @@ jobs:
           echo "FORCE_UNSAFE_CONFIGURE=1" >> $GITHUB_ENV
           echo "LANG=C" >> $GITHUB_ENV
 
-      - name: Install Merlin Toolchain (official)
+      - name: Install Broadcom ARM Toolchain
         run: |
-          sudo mkdir -p /opt
-          cd /opt
-          git clone --depth=1 https://github.com/RMerl/asuswrt-merlin-toolchains.git
-          cd asuswrt-merlin-toolchains
-          sudo ./install.sh
+          sudo mkdir -p /opt/toolchains
+          cd /opt/toolchains
+
+          echo "Downloading toolchain..."
+          sudo wget --content-disposition -q \
+            https://sourceforge.net/projects/asuswrt-merlin/files/Toolchains/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32.tar.xz/download
+
+          echo "Extracting toolchain..."
+          sudo tar -xJf crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32.tar.xz
+
+          echo "✅ Toolchain installed:"
           ls /opt/toolchains
+
 
       - name: Build RT-AX58U_V2
         run: |
