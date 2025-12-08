@@ -48,20 +48,22 @@ jobs:
           echo "LANG=C" >> $GITHUB_ENV
 
       # ✅ INSTALL REQUIRED MERLIN TOOLCHAIN
-      - name: Install Broadcom ARM Toolchain (OFFICIAL METHOD)
+      - name: Install Broadcom ARM Toolchain (FINAL FIX)
+        env:
+          GIT_TERMINAL_PROMPT: "0"
         run: |
           sudo mkdir -p /opt
           cd /opt
 
-          echo "Cloning official Merlin toolchains repo..."
-          git clone https://github.com/RMerl/asuswrt-merlin-toolchains.git
+          echo "Cloning Merlin toolchains repo anonymously..."
+          git -c http.sslVerify=false clone --depth=1 https://github.com/RMerl/asuswrt-merlin-toolchains.git
 
           echo "Installing toolchain..."
           cd asuswrt-merlin-toolchains
           sudo ./install.sh
 
           echo "✅ Installed toolchains:"
-          ls /opt/toolchains
+          ls -l /opt/toolchains
 
 
       - name: Verify SDK structure
