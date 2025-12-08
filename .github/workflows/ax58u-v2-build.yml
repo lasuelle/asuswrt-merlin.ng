@@ -43,7 +43,7 @@ jobs:
           echo "FORCE_UNSAFE_CONFIGURE=1" >> $GITHUB_ENV
           echo "LANG=C" >> $GITHUB_ENV
 
-      - name: Install Broadcom ARM Toolchain (Verified Working)
+      - name: Install Broadcom ARM Toolchain
         run: |
           sudo mkdir -p /opt/toolchains
           cd /opt/toolchains
@@ -54,6 +54,11 @@ jobs:
 
           echo "Extracting..."
           sudo tar -xjf toolchain.tar.bz2
+
+          echo "Fixing Merlin expected folder name..."
+          sudo ln -s \
+            crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32.Rel1.12 \
+            crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32
 
           echo "✅ Installed toolchains:"
           ls -lh /opt/toolchains
