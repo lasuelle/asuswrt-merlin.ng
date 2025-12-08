@@ -71,3 +71,25 @@ jobs:
         run: |
           echo "FORCE_UNSAFE_CONFIGURE=1" >> $GITHUB_ENV
           echo "LANG=C" >> $GITHUB_ENV
+
+
+      - name: Build RT-AX58U_V2 firmware
+        run: |
+          cd release/src-rt-5.04axhnd.675x
+          make RT-AX58U_V2 -j$(nproc)
+
+            - name: Debug firmware output
+        run: |
+          echo "==== Firmware Files Found ===="
+          find release -type f \( -name "*.trx" -o -name "*.bin" \)
+          echo "================================"
+
+      - name: Upload firmware artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RT-AX58U_V2-Firmware
+          path: |
+            release/**/image/*.trx
+            release/**/image/*.bin
+            release/**/image/*
