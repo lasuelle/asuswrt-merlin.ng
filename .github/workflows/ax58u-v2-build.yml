@@ -42,18 +42,25 @@ jobs:
           echo "FORCE_UNSAFE_CONFIGURE=1" >> $GITHUB_ENV
           echo "LANG=C" >> $GITHUB_ENV
 
-      - name: Verify SDK and toolchains
+      # ✅ THIS IS THE CRITICAL FIX
+      - name: Force /bin/sh to bash (REQUIRED FOR MERLIN)
+        run: |
+          sudo ln -sf /bin/bash /bin/sh
+          echo "Now /bin/sh points to:"
+          ls -l /bin/sh
+
+      - name: Verify SDK, toolchains and prebuilts
         run: |
           cd release/src-rt-5.04axhnd.675x
 
           echo "=== SDK DIRECTORY ==="
           pwd
 
-          echo "=== TOOLCHAIN DIRECTORY ==="
-          ls -d toolchains/* || true
+          echo "=== TOOLCHAINS ==="
+          ls toolchains || true
 
-          echo "=== PREBUILT DIRECTORY ==="
-          ls -d prebuilt/* || true
+          echo "=== PREBUILT (BEFORE BUILD) ==="
+          ls prebuilt || true
 
       - name: Build RT-AX58U_V2 firmware
         run: |
