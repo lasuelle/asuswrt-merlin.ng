@@ -12,11 +12,13 @@ jobs:
         shell: bash
 
     steps:
+      # ✅ Checkout firmware source
       - name: Checkout source
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      # ✅ Install required build dependencies
       - name: Install build dependencies
         run: |
           sudo apt update
@@ -38,52 +40,30 @@ jobs:
             xz-utils \
             bzip2
 
-      - name: Setup environment
+      # ✅ Force bash as /bin/sh (Merlin REQUIREMENT)
+      - name: Force bash as /bin/sh
         run: |
-          echo "FORCE_UNSAFE_CONFIGURE=1" >> $GITHUB_ENV
-          echo "LANG=C" >> $GITHUB_ENV
+          sudo ln -sf /bin/bash /bin/sh
+          echo "✅ /bin/sh is now bash"
 
-      - name: Install Broadcom ARM Toolchain
+      # ✅ Install OFFICIAL Merlin toolchains (HND / AX)
+      - name: Install official am-toolchains (HND)
         run: |
           sudo mkdir -p /opt/toolchains
           cd /opt/toolchains
 
-          echo "Downloading toolchain..."
-          sudo wget -O toolchain.tar.bz2 \
-            https://download.iopsys.eu/iopsys/toolchain/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32.Rel1.12.tar.bz2
+          echo "Cloning official am-toolchains repo..."
+          sudo git clone --depth 1 https://github.com/RMerl/am-toolchains.git
 
-          echo "Extracting..."
-          sudo tar -xjf toolchain.tar.bz2
+          echo "Creating brcm-arm-hnd layout..."
+          sudo ln -s am-toolchains/brcm-arm-hnd brcm-arm-hnd
 
-          echo "Fixing Merlin expected folder name..."
-          sudo ln -s \
-            crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32.Rel1.12 \
-            crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32
+          echo "Exporting PATH and LD_LIBRARY_PATH..."
+          echo "/opt/toolchains/brcm-arm-hnd/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32/usr/bin" >> $GITHUB_PATH
+          echo "LD_LIBRARY_PATH=/opt/toolchains/brcm-arm-hnd/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32/usr/lib" >> $GITHUB_ENV
 
-          echo "✅ Installed toolchains:"
+          echo "✅ Toolchain layout:"
           ls -lh /opt/toolchains
+          ls -lh /opt/toolchains/brcm-arm-hnd
 
-      - name: Force bash as /bin/sh
-        run: |
-          sudo ln -sf /bin/bash /bin/sh
-          echo "✅ Forced /bin/sh to bash"
-
-      - name: Build RT-AX58U_V2 firmware
-        run: |
-          cd release
-          SDK_DIR=$(ls -d src-rt-* | grep 5.04 | head -n 1)
-          echo "Using SDK: $SDK_DIR"
-          cd "$SDK_DIR"
-
-          export SHELL=/bin/bash
-          export CONFIG_SHELL=/bin/bash
-
-          make RT-AX58U_V2 -j$(nproc)
-
-
-      - name: Upload firmware
-        uses: actions/upload-artifact@v4
-        with:
-          name: RT-AX58U_V2-Firmware
-          path: |
-            release/src-rt-5.04axhnd.675x/image/*
+      # ✅ Build RT
