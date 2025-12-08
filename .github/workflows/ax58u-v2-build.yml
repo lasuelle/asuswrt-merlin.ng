@@ -58,6 +58,11 @@ jobs:
           echo "✅ Installed toolchains:"
           ls -lh /opt/toolchains
 
+      - name: Force bash as /bin/sh
+        run: |
+          sudo ln -sf /bin/bash /bin/sh
+          echo "✅ Forced /bin/sh to bash"
+
       - name: Build RT-AX58U_V2 firmware
         run: |
           cd release
@@ -65,7 +70,11 @@ jobs:
           echo "Using SDK: $SDK_DIR"
           cd "$SDK_DIR"
 
+          export SHELL=/bin/bash
+          export CONFIG_SHELL=/bin/bash
+
           make RT-AX58U_V2 -j$(nproc)
+
 
       - name: Upload firmware
         uses: actions/upload-artifact@v4
