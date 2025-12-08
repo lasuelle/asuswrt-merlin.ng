@@ -3,6 +3,10 @@ name: Build RT-AX58U V2 Firmware
 on:
   workflow_dispatch:
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   build:
     runs-on: ubuntu-22.04
