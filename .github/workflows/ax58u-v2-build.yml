@@ -12,12 +12,13 @@ jobs:
         shell: bash
 
     steps:
-      - name: Checkout source
+      - name: Checkout source (shallow, fast)
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
+          submodules: recursive
 
-      - name: Install dependencies
+      - name: Install build dependencies
         run: |
           sudo apt update
           sudo apt install -y \
@@ -35,48 +36,24 @@ jobs:
             perl \
             rsync \
             unzip \
-            xz-utils
-
-      - name: Force /bin/sh to bash (CRITICAL)
-        run: |
-          sudo ln -sf /bin/bash /bin/sh
-          ls -l /bin/sh
+            xz-utils \
+            curl
 
       - name: Setup environment
         run: |
           echo "FORCE_UNSAFE_CONFIGURE=1" >> $GITHUB_ENV
           echo "LANG=C" >> $GITHUB_ENV
 
-      # ✅ INSTALL REQUIRED MERLIN TOOLCHAIN
-      - name: Install Broadcom ARM Toolchain (FINAL FIX)
-        env:
-          GIT_TERMINAL_PROMPT: "0"
+      - name: Install Merlin Toolchain (official)
         run: |
           sudo mkdir -p /opt
           cd /opt
-
-          echo "Cloning Merlin toolchains repo anonymously..."
-          git -c http.sslVerify=false clone --depth=1 https://github.com/RMerl/asuswrt-merlin-toolchains.git
-
-          echo "Installing toolchain..."
+          git clone --depth=1 https://github.com/RMerl/asuswrt-merlin-toolchains.git
           cd asuswrt-merlin-toolchains
           sudo ./install.sh
-
-          echo "✅ Installed toolchains:"
-          ls -l /opt/toolchains
-
-
-      - name: Verify SDK structure
-        run: |
-          cd release/src-rt-5.04axhnd.675x
-          echo "✅ SDK FOUND:"
-          pwd
-          echo "✅ PREBUILT:"
-          ls prebuilt || true
-          echo "✅ TOOLCHAINS:"
           ls /opt/toolchains
 
-      - name: Build RT-AX58U_V2 firmware
+      - name: Build RT-AX58U_V2
         run: |
           cd release/src-rt-5.04axhnd.675x
           make RT-AX58U_V2 -j$(nproc)
