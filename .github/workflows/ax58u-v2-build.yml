@@ -12,11 +12,10 @@ jobs:
         shell: bash
 
     steps:
-      - name: Checkout source (shallow, fast)
+      - name: Checkout source
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
-          submodules: recursive
+          fetch-depth: 0
 
       - name: Install build dependencies
         run: |
@@ -37,36 +36,35 @@ jobs:
             rsync \
             unzip \
             xz-utils \
-            curl
+            bc
 
       - name: Setup environment
         run: |
           echo "FORCE_UNSAFE_CONFIGURE=1" >> $GITHUB_ENV
           echo "LANG=C" >> $GITHUB_ENV
 
-      - name: Install Broadcom ARM Toolchain
+      - name: Detect SDK directory
         run: |
-          sudo mkdir -p /opt/toolchains
-          cd /opt/toolchains
+          cd release
+          ls -d src-rt-*
+          SDK_DIR=$(ls -d src-rt-* | grep 5.04 | head -n 1)
+          echo "Using SDK: $SDK_DIR"
+          echo "SDK_DIR=$SDK_DIR" >> $GITHUB_ENV
 
-          echo "Downloading toolchain with curl (redirect-safe)..."
-          sudo curl -L -o toolchain.tar.xz \
-            https://sourceforge.net/projects/asuswrt-merlin/files/Toolchains/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32.tar.xz/download
-
-          echo "Extracting toolchain..."
-          sudo tar -xJf crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32.tar.xz
-
-          echo "✅ Toolchain installed:"
-          ls /opt/toolchains
-
-
-      - name: Build RT-AX58U_V2
+      - name: Build RT-AX58U_V2 firmware
         run: |
-          cd release/src-rt-5.04axhnd.675x
+          cd release/$SDK_DIR
+
+          # ✅ Force bash for Merlin build system
+          sudo ln -sf /bin/bash /bin/sh
+
           make RT-AX58U_V2 -j$(nproc)
 
       - name: Upload firmware
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: RT-AX58U_V2-Firmware
-          path: release/src-rt-5.04axhnd.675x/image/*
+          path: |
+            release/*/image/*.trx
+            release/*/image/*.w
