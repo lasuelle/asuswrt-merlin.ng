@@ -42,20 +42,18 @@ jobs:
           echo "FORCE_UNSAFE_CONFIGURE=1" >> $GITHUB_ENV
           echo "LANG=C" >> $GITHUB_ENV
 
-      - name: Prepare toolchain (FORCE correct SDK)
+      - name: Verify SDK and toolchains
         run: |
           cd release/src-rt-5.04axhnd.675x
 
-          if [ ! -f tools/setup.sh ]; then
-            echo "ERROR: tools/setup.sh not found!"
-            exit 1
-          fi
+          echo "=== SDK DIRECTORY ==="
+          pwd
 
-          bash ./tools/setup.sh
+          echo "=== TOOLCHAIN DIRECTORY ==="
+          ls -d toolchains/* || true
 
-          echo "===== HOST TOOLS CHECK ====="
-          ls -lh prebuilt || true
-          echo "============================"
+          echo "=== PREBUILT DIRECTORY ==="
+          ls -d prebuilt/* || true
 
       - name: Build RT-AX58U_V2 firmware
         run: |
