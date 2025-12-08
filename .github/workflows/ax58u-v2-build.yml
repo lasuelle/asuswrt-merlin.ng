@@ -49,8 +49,8 @@ jobs:
           sudo mkdir -p /opt/toolchains
           cd /opt/toolchains
 
-          echo "Downloading toolchain..."
-          sudo wget --content-disposition -q \
+          echo "Downloading toolchain with curl (redirect-safe)..."
+          sudo curl -L -o toolchain.tar.xz \
             https://sourceforge.net/projects/asuswrt-merlin/files/Toolchains/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32.tar.xz/download
 
           echo "Extracting toolchain..."
