@@ -78,11 +78,11 @@ jobs:
           cd release/src-rt-5.04axhnd.675x
           make RT-AX58U_V2 -j$(nproc)
 
-            - name: Debug firmware output
+      - name: Debug firmware output
         run: |
-          echo "==== Firmware Files Found ===="
-          find release -type f \( -name "*.trx" -o -name "*.bin" \)
-          echo "================================"
+          echo "==== Searching for firmware (.w / .trx / .bin) ===="
+          find release -type f \( -name "*.w" -o -name "*.trx" -o -name "*.bin" \)
+          echo "=================================================="
 
       - name: Upload firmware artifacts
         if: always()
@@ -90,6 +90,7 @@ jobs:
         with:
           name: RT-AX58U_V2-Firmware
           path: |
-            release/**/image/*.trx
-            release/**/image/*.bin
+            release/**/*.w
+            release/**/*.trx
+            release/**/*.bin
             release/**/image/*
