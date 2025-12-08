@@ -54,7 +54,7 @@ jobs:
           cd /opt
 
           echo "Cloning official Merlin toolchains repo..."
-          sudo git clone https://github.com/RMerl/asuswrt-merlin-toolchains.git
+          git clone https://github.com/RMerl/asuswrt-merlin-toolchains.git
 
           echo "Installing toolchain..."
           cd asuswrt-merlin-toolchains
