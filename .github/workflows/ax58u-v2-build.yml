@@ -6,9 +6,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
-defaults:
-  run:
-    shell: bash
+
+    defaults:
+      run:
+        shell: bash
 
     steps:
       - name: Checkout source
@@ -47,11 +48,15 @@ defaults:
           SDK_DIR=$(ls -d src-rt-* | head -n 1)
           echo "Using SDK: $SDK_DIR"
           cd "$SDK_DIR"
+
           if [ -f tools/setup.sh ]; then
-            ./tools/setup.sh
+            bash ./tools/setup.sh
           else
             echo "No setup.sh found, continuing without setup"
           fi
+
+          echo "Checking prebuilt host tools:"
+          ls -lh prebuilt || true
 
       - name: Build RT-AX58U_V2 firmware
         run: |
@@ -59,8 +64,8 @@ defaults:
           SDK_DIR=$(ls -d src-rt-* | head -n 1)
           echo "Using SDK: $SDK_DIR"
           cd "$SDK_DIR"
-          make RT-AX58U_V2 -j$(nproc)
 
+          make RT-AX58U_V2 -j$(nproc)
 
       - name: Upload firmware
         uses: actions/upload-artifact@v4
