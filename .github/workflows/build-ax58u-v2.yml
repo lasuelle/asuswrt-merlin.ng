@@ -48,13 +48,17 @@ jobs:
           automake --version
           autoconf --version
 
-      - name: Fix missing libisl.so.15 (GCC 9.2 dependency)
+      - name: Fix missing libisl.so.15 (GCC 9.2 compatibility)
         run: |
-          wget http://security.ubuntu.com/ubuntu/pool/main/i/isl/libisl15_0.18-2_amd64.deb
-          sudo dpkg -i libisl15_0.18-2_amd64.deb
+          echo "deb http://archive.ubuntu.com/ubuntu focal main universe" | sudo tee /etc/apt/sources.list.d/focal-temp.list
+          sudo apt update
+          sudo apt install -y libisl15
+          sudo rm /etc/apt/sources.list.d/focal-temp.list
+          sudo apt update
 
           echo "✅ Verifying libisl:"
           ldconfig -p | grep libisl || true
+
 
 
       # ✅ Force bash as /bin/sh (Merlin requirement)
