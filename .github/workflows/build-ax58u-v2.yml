@@ -43,6 +43,9 @@ jobs:
             autoconf \
             automake
 
+          echo "✅ automake version:"
+          automake --version
+
       # ✅ Force bash as /bin/sh (Merlin requirement)
       - name: Force bash as /bin/sh
         run: |
