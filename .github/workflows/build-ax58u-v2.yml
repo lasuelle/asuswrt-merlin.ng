@@ -110,7 +110,7 @@ jobs:
       - name: Build RT-AX58U_V2 firmware
         run: |
           cd release/src-rt-5.04axhnd.675x
-          make RT-AX58U_V2 -j$(nproc)
+          make RT-AX58U_V2 -j3
 
       # 🔍 Debug: locate firmware
       - name: Locate firmware output
