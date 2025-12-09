@@ -28,25 +28,55 @@ jobs:
             gawk \
             gcc-multilib \
             g++-multilib \
+            libc6-dev-i386 \
             libncurses5-dev \
             libssl-dev \
             zlib1g-dev \
             file \
             wget \
+            curl \
             python3 \
             perl \
             rsync \
             unzip \
             xz-utils \
             bzip2 \
+            p7zip-full \
+            bc \
+            flex \
+            bison \
+            patch \
+            texinfo \
             automake \
             autoconf \
             libtool \
-            gettext
-
-          # ✅ Hard verify (prevents silent failure)
-          automake --version
-          autoconf --version
+            gettext \
+            cmake \
+            make \
+            libelf-dev \
+            lzma \
+            lzop \
+            u-boot-tools \
+            device-tree-compiler \
+            ccache \
+            pkg-config \
+            ca-certificates \
+            dos2unix \
+            libusb-1.0-0-dev \
+            libffi-dev
+          
+          # ✅ GCC 9.2 runtime loader dependencies (THE CRITICAL ONES)
+          sudo apt install -y \
+            libisl15 \
+            libmpc3 \
+            libmpfr6 \
+            libgmp10
+          
+          # ✅ Hard verification (fail fast if broken)
+          gcc --version
+            make --version
+            automake --version
+            autoconf --version
 
       # ✅ Force bash as /bin/sh (Merlin requirement)
       - name: Force bash as /bin/sh
