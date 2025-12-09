@@ -9,6 +9,7 @@ jobs:
 
     container:
       image: ubuntu:20.04
+      options: --user 1001
 
     steps:
       - name: Install base tools
@@ -19,7 +20,7 @@ jobs:
             libncurses5-dev libssl-dev zlib1g-dev file wget \
             python3 perl rsync unzip xz-utils bzip2 \
             automake autoconf libtool gettext \
-            liblzo2-dev libmpc3 libgmp10
+            liblzo2-dev libmpc3 libgmp10 git-lfs bash
 
       - name: Force bash as /bin/sh (Merlin requirement)
         run: |
@@ -28,6 +29,14 @@ jobs:
           echo "Shell check:"
           /bin/sh --version || true
 
+      - name: Install legacy libisl15 from Ubuntu 18.04
+        run: |
+          echo "deb http://archive.ubuntu.com/ubuntu bionic main universe" > /etc/apt/sources.list.d/bionic-temp.list
+          apt update
+          apt install -y libisl15
+          rm /etc/apt/sources.list.d/bionic-temp.list
+          apt update
+          ls -l /usr/lib/x86_64-linux-gnu/libisl.so.15
 
       - name: Install git-lfs (required for repo checkout)
         run: |
