@@ -21,6 +21,13 @@ jobs:
             automake autoconf libtool gettext \
             liblzo2-dev libmpc3 libgmp10
 
+      - name: Install git-lfs (required for repo checkout)
+        run: |
+          apt update
+          apt install -y git-lfs
+          git lfs install
+
+
       - name: Install legacy libisl15 from Ubuntu 18.04
         run: |
           echo "Adding Ubuntu 18.04 repo temporarily for libisl15..."
