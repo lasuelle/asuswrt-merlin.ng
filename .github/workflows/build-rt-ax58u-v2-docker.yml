@@ -1,4 +1,4 @@
-name: Build RT-AX58U_V2 Firmware (Ubuntu 20.04 Container)
+name: Build RT-AX58U_V2 Firmware (Ubuntu 20.04 Clean)
 
 on:
   workflow_dispatch:
@@ -11,10 +11,10 @@ jobs:
       image: ubuntu:20.04
 
     steps:
-      # ------------------------------------------------------------
-      # 1) Install all base dependencies AS ROOT
-      # ------------------------------------------------------------
-      - name: Install base tools (root)
+      # ===============================
+      # 1️⃣ Base system dependencies
+      # ===============================
+      - name: Install base build tools
         run: |
           apt update
           DEBIAN_FRONTEND=noninteractive apt install -y \
@@ -24,104 +24,99 @@ jobs:
             automake autoconf libtool gettext \
             liblzo2-dev libmpc3 libgmp10 \
             git-lfs bash ca-certificates \
-            xxd bison uuid-dev
+            xxd bison uuid-dev \
+            pkg-config flex
 
-      # ------------------------------------------------------------
-      # 2) Force /bin/sh → bash (Merlin requirement)
-      # ------------------------------------------------------------
-      - name: Force bash as /bin/sh (Merlin requirement)
+      # ===============================
+      # 2️⃣ Force bash as /bin/sh
+      # ===============================
+      - name: Force bash as default shell
         run: |
           ln -sf /bin/bash /bin/sh
-          echo "Shell check:"
           /bin/sh --version || true
 
-      # ------------------------------------------------------------
-      # 3) Install legacy libisl15 from Ubuntu 18.04
-      # ------------------------------------------------------------
-      - name: Install legacy libisl15 from Ubuntu 18.04
+      # ===============================
+      # 3️⃣ Install legacy libisl15 (REQUIRED)
+      # ===============================
+      - name: Install libisl15 from Ubuntu 18.04
         run: |
           echo "deb http://archive.ubuntu.com/ubuntu bionic main universe" > /etc/apt/sources.list.d/bionic-temp.list
           apt update
           apt install -y libisl15
           rm /etc/apt/sources.list.d/bionic-temp.list
           apt update
-          echo "✅ Verifying libisl15:"
-          ls -l /usr/lib/x86_64-linux-gnu/libisl.so.15
 
-      - name: Fix libisl runtime linker path
+      # ===============================
+      # 4️⃣ Register libisl in linker cache
+      # ===============================
+      - name: Fix libisl runtime linking
         run: |
           echo "/usr/lib/x86_64-linux-gnu" > /etc/ld.so.conf.d/libisl.conf
           ldconfig
-          ldconfig -p | grep libisl
+          echo "✅ libisl registered:"
+          ldconfig -p | grep libisl || true
 
-
-      # ------------------------------------------------------------
-      # 4) Initialize git-lfs
-      # ------------------------------------------------------------
-      - name: Initialize git-lfs
+      # ===============================
+      # 5️⃣ Git LFS setup (mandatory)
+      # ===============================
+      - name: Setup git-lfs
         run: |
           git lfs install
 
-      # ------------------------------------------------------------
-      # 5) Checkout source
-      # ------------------------------------------------------------
+      # ===============================
+      # 6️⃣ Checkout source
+      # ===============================
       - name: Checkout source
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           lfs: true
 
-      # ------------------------------------------------------------
-      # 6) Install Merlin official toolchains
-      # ------------------------------------------------------------
+      # ===============================
+      # 7️⃣ Install Merlin toolchains (OFFICIAL)
+      # ===============================
       - name: Install Merlin toolchains
         run: |
           mkdir -p /opt
-          git clone https://github.com/RMerl/am-toolchains.git /opt/am-toolchains
+          git clone --depth 1 https://github.com/RMerl/am-toolchains.git /opt/am-toolchains
+
           mkdir -p /opt/toolchains
           ln -s \
             /opt/am-toolchains/brcm-arm-hnd/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32 \
             /opt/toolchains/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32
 
-      # ------------------------------------------------------------
-      # 7) Setup Merlin build environment
-      # ------------------------------------------------------------
-      - name: Setup build environment
+          echo "✅ Toolchain linked:"
+          ls -l /opt/toolchains
+
+      # ===============================
+      # 8️⃣ Merlin environment flags
+      # ===============================
+      - name: Setup Merlin environment
         run: |
           echo "FORCE_UNSAFE_CONFIGURE=1" >> $GITHUB_ENV
           echo "LANG=C" >> $GITHUB_ENV
 
-      # ------------------------------------------------------------
-      # 8) Create NON-ROOT build user (MANDATORY)
-      # ------------------------------------------------------------
-      - name: Create non-root build user
-        run: |
-          useradd -m builder
-          chown -R builder:builder /__w/asuswrt-merlin.ng
-
-      # ------------------------------------------------------------
-      # 9) Build RT-AX58U_V2 firmware as NON-ROOT
-      # ------------------------------------------------------------
+      # ===============================
+      # 9️⃣ BUILD FIRMWARE
+      # ===============================
       - name: Build RT-AX58U_V2 firmware
         run: |
-          su builder -c "
-            cd /__w/asuswrt-merlin.ng/asuswrt-merlin.ng/release/src-rt-5.04axhnd.675x &&
-            make RT-AX58U_V2 -j3
-          "
+          cd release/src-rt-5.04axhnd.675x
+          make RT-AX58U_V2 -j3
 
-      # ------------------------------------------------------------
-      # 10) Locate firmware output
-      # ------------------------------------------------------------
+      # ===============================
+      # 🔎 Locate output
+      # ===============================
       - name: Locate firmware output
         if: always()
         run: |
-          echo '==== Firmware files found ===='
+          echo "==== Firmware files found ===="
           find release/src-rt-5.04axhnd.675x/image -type f || true
-          echo '=============================='
+          echo "=============================="
 
-      # ------------------------------------------------------------
-      # 11) Upload firmware artifacts
-      # ------------------------------------------------------------
+      # ===============================
+      # 📦 Upload artifacts
+      # ===============================
       - name: Upload firmware artifacts
         if: always()
         uses: actions/upload-artifact@v4
