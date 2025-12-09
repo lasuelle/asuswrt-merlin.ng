@@ -19,7 +19,7 @@ jobs:
           fetch-depth: 0
           lfs: true
 
-      # ✅ Install build dependencies
+      # ✅ Install build dependencies (Merlin VERIFIED SET)
       - name: Install build dependencies
         run: |
           sudo apt update
@@ -45,40 +45,30 @@ jobs:
             libtool \
             gettext
 
-          # ✅ HARD VERIFY (prevents silent failure)
           automake --version
           autoconf --version
-
 
       # ✅ Force bash as /bin/sh (Merlin requirement)
       - name: Force bash as /bin/sh
         run: |
           sudo ln -sf /bin/bash /bin/sh
-          echo "Shell check:"
           /bin/sh --version || true
 
-      - name: Install official Merlin am-toolchains
+      # ✅ Install OFFICIAL Merlin toolchains (CORRECT PATH)
+      - name: Install official Merlin toolchains (FIXED)
         run: |
-          sudo mkdir -p /opt
-          cd /opt
-      
-          echo "Cloning am-toolchains..."
-          sudo git clone --depth 1 https://github.com/RMerl/am-toolchains.git
-      
-          echo "Creating /opt/toolchains..."
           sudo mkdir -p /opt/toolchains
-      
-          echo "Linking brcm-arm-hnd toolchain..."
-          sudo ln -s /opt/am-toolchains/brcm-arm-hnd /opt/toolchains/brcm-arm-hnd
-      
-          echo "✅ Verifying toolchain:"
-          ls -lh /opt/toolchains/brcm-arm-hnd
-      
-          echo "✅ Exporting toolchain PATH..."
-          echo "/opt/toolchains/brcm-arm-hnd/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32/usr/bin" >> $GITHUB_PATH
-          echo "LD_LIBRARY_PATH=/opt/toolchains/brcm-arm-hnd/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32/usr/lib" >> $GITHUB_ENV
+          sudo git clone --depth 1 https://github.com/RMerl/am-toolchains.git /opt/am-toolchains
 
+          echo "✅ Linking toolchain to Merlin-required path..."
 
+          sudo ln -s \
+            /opt/am-toolchains/brcm-arm-hnd/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32 \
+            /opt/toolchains/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32
+
+          echo "✅ Verifying REQUIRED toolchain path:"
+          ls -lh /opt/toolchains/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32
+          ls -lh /opt/toolchains/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32/usr/bin
 
       # ✅ Standard Merlin environment
       - name: Setup build environment
@@ -92,7 +82,7 @@ jobs:
           cd release/src-rt-5.04axhnd.675x
           make RT-AX58U_V2 -j$(nproc)
 
-      # 🔍 Debug: list firmware outputs
+      # 🔍 Debug: locate firmware
       - name: Locate firmware output
         if: always()
         run: |
@@ -100,7 +90,7 @@ jobs:
           find release/src-rt-5.04axhnd.675x/image -type f 2>/dev/null || true
           echo "=============================="
 
-      # 📦 Upload firmware artifacts (SAFE – no symlink loops)
+      # 📦 Upload firmware artifacts
       - name: Upload firmware artifacts
         uses: actions/upload-artifact@v4
         if: always()
