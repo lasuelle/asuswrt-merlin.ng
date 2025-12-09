@@ -50,21 +50,23 @@ jobs:
 
       - name: Fix missing libisl.so.15 (GCC 9.2 compatibility)
         run: |
-          cat <<EOF | sudo tee /etc/apt/sources.list.d/focal-temp.list
-          deb http://archive.ubuntu.com/ubuntu focal main universe
-          deb http://archive.ubuntu.com/ubuntu focal-updates main universe
-          deb http://archive.ubuntu.com/ubuntu focal-security main universe
-          EOF
+          set -e
 
-          sudo apt update
-          sudo apt install -y libisl15 || (echo "libisl15 still not found, listing matches:" && apt-cache search libisl)
+          # Try Ubuntu old-releases first
+          if wget -O libisl15.deb \
+            https://old-releases.ubuntu.com/ubuntu/pool/universe/i/isl-0.18/libisl15_0.18-4_amd64.deb; then
+            echo "Got libisl15 from Ubuntu old-releases."
+          else
+            echo "Ubuntu old-releases failed, trying Debian mirror..."
+            wget -O libisl15.deb \
+              https://debian.man.ac.uk/Debian/pool/main/i/isl/libisl15_0.18-1_amd64.deb
+          fi
 
-          echo "Cleaning up temporary repo..."
-          sudo rm /etc/apt/sources.list.d/focal-temp.list
-          sudo apt update
+          sudo dpkg -i libisl15.deb
 
-          echo "Verifying libisl:"
+          echo "✅ Verifying libisl:"
           ldconfig -p | grep libisl || true
+
 
 
 
