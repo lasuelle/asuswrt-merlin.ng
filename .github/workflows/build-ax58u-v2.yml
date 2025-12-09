@@ -39,12 +39,14 @@ jobs:
             unzip \
             xz-utils \
             bzip2 \
-            curl \
+            automake \
             autoconf \
-            automake
+            libtool
 
-          echo "✅ automake version:"
+          # ✅ HARD VERIFY (prevents silent failure)
           automake --version
+          autoconf --version
+
 
       # ✅ Force bash as /bin/sh (Merlin requirement)
       - name: Force bash as /bin/sh
