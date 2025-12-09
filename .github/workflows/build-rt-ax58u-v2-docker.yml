@@ -23,7 +23,7 @@ jobs:
             python3 perl rsync unzip xz-utils bzip2 \
             automake autoconf libtool gettext \
             liblzo2-dev libmpc3 libgmp10 \
-            git-lfs bash ca-certificates
+            git-lfs bash ca-certificates xxd
 
       # ------------------------------------------------------------
       # 2) Force /bin/sh → bash (Merlin requirement)
