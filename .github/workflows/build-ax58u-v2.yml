@@ -60,7 +60,7 @@ jobs:
           sudo apt update
 
           echo "Installing 32-bit runtime dependencies..."
-          sudo apt install -y libc6:i386 libstdc++6:i386 zlib1g:i386
+          sudo apt install -y libc6:i386 libstdc++6:i386 zlib1g:i386 libgmp10:i386
 
           echo "Downloading 32-bit libisl15..."
           wget -O libisl15_i386.deb \
