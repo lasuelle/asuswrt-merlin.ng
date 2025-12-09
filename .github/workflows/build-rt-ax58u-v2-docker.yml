@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-22.04
 
     container:
-      image: rmerl/asuswrt-merlin-builder:latest
+      image: yozik04/docker-asuswrt-merlin-build-env:latest
       options: --user root
 
     steps:
@@ -18,18 +18,18 @@ jobs:
           fetch-depth: 0
           lfs: true
 
-      - name: Show system info
+      - name: Show environment info
         run: |
           uname -a
           free -h
-          arm-buildroot-linux-gnueabi-gcc --version
+          arm-buildroot-linux-gnueabi-gcc --version || true
 
       - name: Build RT-AX58U_V2 firmware
         run: |
           cd release/src-rt-5.04axhnd.675x
           make RT-AX58U_V2 -j3
 
-      - name: Locate firmware output
+      - name: List firmware outputs
         if: always()
         run: |
           echo "==== Firmware files found ===="
