@@ -19,7 +19,7 @@ jobs:
             libncurses5-dev libssl-dev zlib1g-dev file wget \
             python3 perl rsync unzip xz-utils bzip2 \
             automake autoconf libtool gettext \
-            liblzo2-dev libisl15 libmpc3 libgmp10
+            liblzo2-dev libmpc3 libgmp10
 
       - name: Install legacy libisl15 from Ubuntu 18.04
         run: |
