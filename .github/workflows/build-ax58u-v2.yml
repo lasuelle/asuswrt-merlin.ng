@@ -48,27 +48,21 @@ jobs:
           automake --version
           autoconf --version
 
-      - name: Fix missing libisl.so.15 (GCC 9.2 compatibility)
+      - name: Fix missing legacy dependencies for Broadcom GCC
         run: |
           set -e
 
-          # Try Ubuntu old-releases first
-          if wget -O libisl15.deb \
-            https://old-releases.ubuntu.com/ubuntu/pool/universe/i/isl-0.18/libisl15_0.18-4_amd64.deb; then
-            echo "Got libisl15 from Ubuntu old-releases."
-          else
-            echo "Ubuntu old-releases failed, trying Debian mirror..."
-            wget -O libisl15.deb \
-              https://debian.man.ac.uk/Debian/pool/main/i/isl/libisl15_0.18-1_amd64.deb
-          fi
+          echo "Installing required dev library for kernel build..."
+          sudo apt install -y liblzo2-dev
+
+          echo "Downloading working libisl15 package..."
+          wget -O libisl15.deb \
+            https://old-releases.ubuntu.com/ubuntu/pool/universe/i/isl-0.18/libisl15_0.18-4_amd64.deb
 
           sudo dpkg -i libisl15.deb
 
           echo "✅ Verifying libisl:"
           ldconfig -p | grep libisl || true
-
-
-
 
 
       # ✅ Force bash as /bin/sh (Merlin requirement)
