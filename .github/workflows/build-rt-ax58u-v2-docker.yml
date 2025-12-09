@@ -1,4 +1,4 @@
-name: Build RT-AX58U_V2 Firmware (Docker)
+name: Build RT-AX58U_V2 Firmware (Self-Built Docker)
 
 on:
   workflow_dispatch:
@@ -7,10 +7,6 @@ jobs:
   build:
     runs-on: ubuntu-22.04
 
-    container:
-      image: yozik04/docker-asuswrt-merlin-build-env:latest
-      options: --user root
-
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -18,23 +14,36 @@ jobs:
           fetch-depth: 0
           lfs: true
 
-      - name: Show environment info
+      - name: Install Docker
         run: |
-          uname -a
-          free -h
-          arm-buildroot-linux-gnueabi-gcc --version || true
+          sudo apt update
+          sudo apt install -y docker.io
+          sudo systemctl start docker
+          sudo systemctl enable docker
 
-      - name: Build RT-AX58U_V2 firmware
+      - name: Build Merlin Docker image locally
         run: |
-          cd release/src-rt-5.04axhnd.675x
-          make RT-AX58U_V2 -j3
+          git clone https://github.com/RMerl/asuswrt-merlin.git merlin-build-env
+          cd merlin-build-env/tools/docker
+          sudo docker build -t merlin-builder .
 
-      - name: List firmware outputs
+      - name: Run firmware build inside Docker
+        run: |
+          sudo docker run --rm \
+            -v ${{ github.workspace }}:/workspace \
+            -w /workspace \
+            merlin-builder \
+            bash -c "
+              cd release/src-rt-5.04axhnd.675x &&
+              make RT-AX58U_V2 -j3
+            "
+
+      - name: Locate firmware output
         if: always()
         run: |
-          echo "==== Firmware files found ===="
+          echo '==== Firmware files found ===='
           find release/src-rt-5.04axhnd.675x/image -type f || true
-          echo "=============================="
+          echo '=============================='
 
       - name: Upload firmware artifacts
         if: always()
