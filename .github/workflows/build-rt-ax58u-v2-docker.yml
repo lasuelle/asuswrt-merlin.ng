@@ -1,4 +1,4 @@
-name: Build RT-AX58U_V2 Firmware (Self-Healing CI)
+name: Build RT-AX58U_V2 Firmware (Clean Self-Healing CI)
 
 on:
   workflow_dispatch:
@@ -14,7 +14,7 @@ jobs:
 
     steps:
       # ----------------------------
-      # 1️⃣ Checkout
+      # 1️⃣ Checkout (NON-ROOT)
       # ----------------------------
       - name: Checkout source
         uses: actions/checkout@v4
@@ -31,7 +31,7 @@ jobs:
           /bin/sh --version
 
       # ----------------------------
-      # 3️⃣ Install FULL legacy build stack (VERIFIED)
+      # 3️⃣ Install FULL legacy dependencies
       # ----------------------------
       - name: Install full legacy dependencies
         run: |
@@ -51,9 +51,9 @@ jobs:
           git lfs install
 
       # ----------------------------
-      # 4️⃣ Install WORKING libisl15 (correct ELF, host ABI)
+      # 4️⃣ Install WORKING libisl15 (correct ABI)
       # ----------------------------
-      - name: Install legacy libisl15 safely
+      - name: Install legacy libisl15
         run: |
           wget -q https://old-releases.ubuntu.com/ubuntu/pool/universe/i/isl-0.18/libisl15_0.18-4_amd64.deb
           sudo dpkg -i libisl15_0.18-4_amd64.deb
@@ -75,15 +75,7 @@ jobs:
             /opt/toolchains/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32
 
       # ----------------------------
-      # 6️⃣ Create NON-ROOT build user (Merlin REQUIRED)
-      # ----------------------------
-      - name: Create non-root build user
-        run: |
-          sudo useradd -m builder || true
-          sudo chown -R builder:builder $GITHUB_WORKSPACE
-
-      # ----------------------------
-      # 7️⃣ Setup Merlin environment
+      # 6️⃣ Merlin environment
       # ----------------------------
       - name: Setup build environment
         run: |
@@ -91,18 +83,15 @@ jobs:
           echo "LANG=C" >> $GITHUB_ENV
 
       # ----------------------------
-      # 8️⃣ Build as NON-ROOT (CRITICAL)
+      # 7️⃣ Build (NON-ROOT, SAFE)
       # ----------------------------
       - name: Build RT-AX58U_V2 firmware
         run: |
-          sudo -u builder bash << 'EOF'
-          set -e
           cd release/src-rt-5.04axhnd.675x
           make RT-AX58U_V2 -j${{ matrix.make_jobs }}
-          EOF
 
       # ----------------------------
-      # 9️⃣ Locate output
+      # 8️⃣ Locate firmware
       # ----------------------------
       - name: Locate firmware output
         if: always()
@@ -110,7 +99,7 @@ jobs:
           find release/src-rt-5.04axhnd.675x/image -type f || true
 
       # ----------------------------
-      # 🔟 Upload firmware
+      # 9️⃣ Upload firmware
       # ----------------------------
       - name: Upload firmware artifacts
         if: always()
