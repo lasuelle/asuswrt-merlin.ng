@@ -17,9 +17,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          lfs: true
 
-      # ✅ Install build dependencies (Merlin VERIFIED SET)
+      # ✅ Install build dependencies
       - name: Install build dependencies
         run: |
           sudo apt update
@@ -45,73 +44,51 @@ jobs:
             libtool \
             gettext
 
+          # ✅ Hard verify (prevents silent failure)
           automake --version
           autoconf --version
-
-      - name: Fix missing legacy dependencies for Broadcom GCC
-        run: |
-          set -e
-
-          echo "Installing required dev library for kernel build..."
-          sudo apt install -y liblzo2-dev
-
-          echo "Enabling i386 multiarch..."
-          sudo dpkg --add-architecture i386
-          sudo apt update
-
-          echo "Installing 32-bit runtime dependencies..."
-          sudo apt install -y libc6:i386 libstdc++6:i386 zlib1g:i386 libgmp10:i386 libmpc3:i386 libgcc-s1:i386
-
-          echo "Downloading 32-bit libisl15..."
-          wget -O libisl15_i386.deb \
-            https://old-releases.ubuntu.com/ubuntu/pool/universe/i/isl-0.18/libisl15_0.18-4_i386.deb
-
-          sudo dpkg -i libisl15_i386.deb
-
-          echo "✅ Verifying 32-bit libisl:"
-          file /lib/i386-linux-gnu/libisl.so.15
-
 
       # ✅ Force bash as /bin/sh (Merlin requirement)
       - name: Force bash as /bin/sh
         run: |
           sudo ln -sf /bin/bash /bin/sh
+          echo "Shell in use:"
           /bin/sh --version || true
 
-      # ✅ Install OFFICIAL Merlin toolchains (CORRECT PATH)
-      - name: Install official Merlin toolchains (FIXED)
+      # ✅ Install OFFICIAL Merlin am-toolchains (HND / AX – Kernel 4.19)
+      - name: Install official Merlin am-toolchains
         run: |
+          sudo mkdir -p /opt
+          cd /opt
+
+          echo "Cloning official am-toolchains..."
+          sudo git clone --depth 1 https://github.com/RMerl/am-toolchains.git
+
+          echo "Creating correct /opt/toolchains layout..."
           sudo mkdir -p /opt/toolchains
-          sudo git clone --depth 1 https://github.com/RMerl/am-toolchains.git /opt/am-toolchains
+          sudo ln -s /opt/am-toolchains/brcm-arm-hnd /opt/toolchains/brcm-arm-hnd
 
-          echo "✅ Linking toolchain to Merlin-required path..."
+          echo "✅ Toolchain layout:"
+          ls -lah /opt/toolchains
+          ls -lah /opt/toolchains/brcm-arm-hnd
 
-          sudo ln -s \
-            /opt/am-toolchains/brcm-arm-hnd/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32 \
-            /opt/toolchains/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32
+          echo "✅ Registering toolchain paths..."
+          echo "/opt/toolchains/brcm-arm-hnd/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32/usr/bin" >> $GITHUB_PATH
+          echo "LD_LIBRARY_PATH=/opt/toolchains/brcm-arm-hnd/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32/usr/lib" >> $GITHUB_ENV
 
-          echo "✅ Verifying REQUIRED toolchain path:"
-          ls -lh /opt/toolchains/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32
-          ls -lh /opt/toolchains/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32/usr/bin
-
-      # ✅ Standard Merlin environment
+      # ✅ Standard Merlin environment (SAFE, keep this)
       - name: Setup build environment
         run: |
           echo "FORCE_UNSAFE_CONFIGURE=1" >> $GITHUB_ENV
           echo "LANG=C" >> $GITHUB_ENV
 
-      - name: Force dynamic linker to see libisl15
-        run: |
-          echo "LD_LIBRARY_PATH=/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu" >> $GITHUB_ENV
-
-
       # ✅ Build RT-AX58U_V2 firmware
       - name: Build RT-AX58U_V2 firmware
         run: |
           cd release/src-rt-5.04axhnd.675x
-          make RT-AX58U_V2 -j3
+          make RT-AX58U_V2 -j$(nproc)
 
-      # 🔍 Debug: locate firmware
+      # 🔍 Debug: locate firmware output
       - name: Locate firmware output
         if: always()
         run: |
@@ -119,14 +96,14 @@ jobs:
           find release/src-rt-5.04axhnd.675x/image -type f 2>/dev/null || true
           echo "=============================="
 
-      # 📦 Upload firmware artifacts
+      # 📦 Upload firmware artifacts (NO symlink loops)
       - name: Upload firmware artifacts
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: RT-AX58U_V2-Firmware
           path: |
-            release/src-rt-5.04axhnd.675x/image/*.w
             release/src-rt-5.04axhnd.675x/image/*.trx
+            release/src-rt-5.04axhnd.675x/image/*.w
             release/src-rt-5.04axhnd.675x/image/*.bin
           if-no-files-found: warn
