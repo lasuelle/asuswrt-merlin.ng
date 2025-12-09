@@ -41,7 +41,8 @@ jobs:
             bzip2 \
             automake \
             autoconf \
-            libtool
+            libtool \
+            gettext
 
           # ✅ HARD VERIFY (prevents silent failure)
           automake --version
