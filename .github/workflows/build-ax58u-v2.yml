@@ -94,6 +94,11 @@ jobs:
           echo "FORCE_UNSAFE_CONFIGURE=1" >> $GITHUB_ENV
           echo "LANG=C" >> $GITHUB_ENV
 
+          - name: Force dynamic linker to see libisl15
+        run: |
+          echo "LD_LIBRARY_PATH=/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu" >> $GITHUB_ENV
+
+
       # ✅ Build RT-AX58U_V2 firmware
       - name: Build RT-AX58U_V2 firmware
         run: |
