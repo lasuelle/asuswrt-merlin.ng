@@ -55,14 +55,21 @@ jobs:
           echo "Installing required dev library for kernel build..."
           sudo apt install -y liblzo2-dev
 
-          echo "Downloading working libisl15 package..."
-          wget -O libisl15.deb \
-            https://old-releases.ubuntu.com/ubuntu/pool/universe/i/isl-0.18/libisl15_0.18-4_amd64.deb
+          echo "Enabling i386 multiarch..."
+          sudo dpkg --add-architecture i386
+          sudo apt update
 
-          sudo dpkg -i libisl15.deb
+          echo "Installing 32-bit runtime dependencies..."
+          sudo apt install -y libc6:i386 libstdc++6:i386 zlib1g:i386
 
-          echo "✅ Verifying libisl:"
-          ldconfig -p | grep libisl || true
+          echo "Downloading 32-bit libisl15..."
+          wget -O libisl15_i386.deb \
+            https://old-releases.ubuntu.com/ubuntu/pool/universe/i/isl-0.18/libisl15_0.18-4_i386.deb
+
+          sudo dpkg -i libisl15_i386.deb
+
+          echo "✅ Verifying 32-bit libisl:"
+          file /lib/i386-linux-gnu/libisl.so.15
 
 
       # ✅ Force bash as /bin/sh (Merlin requirement)
