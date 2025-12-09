@@ -48,6 +48,15 @@ jobs:
           automake --version
           autoconf --version
 
+      - name: Fix missing libisl.so.15 (GCC 9.2 dependency)
+        run: |
+          wget http://security.ubuntu.com/ubuntu/pool/main/i/isl/libisl15_0.18-2_amd64.deb
+          sudo dpkg -i libisl15_0.18-2_amd64.deb
+
+          echo "✅ Verifying libisl:"
+          ldconfig -p | grep libisl || true
+
+
       # ✅ Force bash as /bin/sh (Merlin requirement)
       - name: Force bash as /bin/sh
         run: |
