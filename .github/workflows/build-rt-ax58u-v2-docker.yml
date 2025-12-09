@@ -21,6 +21,14 @@ jobs:
             automake autoconf libtool gettext \
             liblzo2-dev libmpc3 libgmp10
 
+      - name: Force bash as /bin/sh (Merlin requirement)
+        run: |
+          apt install -y bash
+          ln -sf /bin/bash /bin/sh
+          echo "Shell check:"
+          /bin/sh --version || true
+
+
       - name: Install git-lfs (required for repo checkout)
         run: |
           apt update
