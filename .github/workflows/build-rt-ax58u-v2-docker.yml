@@ -89,7 +89,7 @@ jobs:
       - name: Create non-root build user
         run: |
           useradd -m builder
-          chown -R builder:builder /__w
+          chown -R builder:builder /__w/asuswrt-merlin.ng
 
       # ------------------------------------------------------------
       # 9) Build RT-AX58U_V2 firmware as NON-ROOT
