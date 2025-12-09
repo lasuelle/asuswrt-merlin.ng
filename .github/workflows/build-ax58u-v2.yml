@@ -39,7 +39,9 @@ jobs:
             unzip \
             xz-utils \
             bzip2 \
-            curl
+            curl \
+            autoconf \
+            automake
 
       # ✅ Force bash as /bin/sh (Merlin requirement)
       - name: Force bash as /bin/sh
