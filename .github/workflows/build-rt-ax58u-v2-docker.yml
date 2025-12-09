@@ -23,7 +23,8 @@ jobs:
             python3 perl rsync unzip xz-utils bzip2 \
             automake autoconf libtool gettext \
             liblzo2-dev libmpc3 libgmp10 \
-            git-lfs bash ca-certificates xxd
+            git-lfs bash ca-certificates \
+            xxd bison uuid-dev
 
       # ------------------------------------------------------------
       # 2) Force /bin/sh → bash (Merlin requirement)
@@ -46,6 +47,13 @@ jobs:
           apt update
           echo "✅ Verifying libisl15:"
           ls -l /usr/lib/x86_64-linux-gnu/libisl.so.15
+
+      - name: Fix libisl runtime linker path
+        run: |
+          echo "/usr/lib/x86_64-linux-gnu" > /etc/ld.so.conf.d/libisl.conf
+          ldconfig
+          ldconfig -p | grep libisl
+
 
       # ------------------------------------------------------------
       # 4) Initialize git-lfs
