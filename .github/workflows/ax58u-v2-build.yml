@@ -1,1 +1,55 @@
+name: Build RT-AX58U_V2 Firmware (Docker Environment)
 
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    # ⭐ Use Gnuton's official Merlin toolchain Docker build environment
+    container:
+      image: gnuton/asuswrt-merlin-toolchains-docker:20221206
+      options: --privileged
+
+    steps:
+      # --- CHECKOUT ---
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # --- Confirm environment ---
+      - name: Verify toolchain and environment
+        run: |
+          echo "GCC version:"
+          arm-linux-gcc --version || true
+          echo "Toolchain in container:"
+          ls -R /opt || true
+          uname -a
+
+      # --- Build firmware ---
+      - name: Build RT-AX58U_V2 firmware
+        run: |
+          cd release/src-rt-5.04axhnd.675x
+          make RT-AX58U_V2 -j$(nproc)
+
+      # --- List output files ---
+      - name: Locate firmware output
+        if: always()
+        run: |
+          echo "==== Firmware files found ===="
+          find release/src-rt-5.04axhnd.675x/image -type f 2>/dev/null || true
+          echo "=============================="
+
+      # --- Upload artifacts ---
+      - name: Upload firmware
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RT-AX58U_V2-Firmware
+          path: |
+            release/src-rt-5.04axhnd.675x/image/*.w
+            release/src-rt-5.04axhnd.675x/image/*.trx
+            release/src-rt-5.04axhnd.675x/image/*.bin
+          if-no-files-found: warn
