@@ -1,124 +1,40 @@
-name: Build RT-AX58U_V2 Firmware
+name: Build RT-AX58U_V2 Firmware (Docker Environment)
 
 on:
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        shell: bash
+    # ⭐ Use Gnuton's official Merlin toolchain Docker build environment
+    container:
+      image: gnuton/asuswrt-merlin-toolchains-docker:20221206
+      options: --privileged
 
     steps:
-      # ✅ Checkout source
+      # --- CHECKOUT ---
       - name: Checkout source
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # ✅ Install build dependencies
-      - name: Install build dependencies
+      # --- Confirm environment ---
+      - name: Verify toolchain and environment
         run: |
-          sudo apt update
-          sudo apt install -y \
-            build-essential \
-            git \
-            gawk \
-            gcc-multilib \
-            g++-multilib \
-            libc6-dev-i386 \
-            libncurses5-dev \
-            libssl-dev \
-            zlib1g-dev \
-            file \
-            wget \
-            curl \
-            python3 \
-            perl \
-            rsync \
-            unzip \
-            xz-utils \
-            bzip2 \
-            p7zip-full \
-            bc \
-            flex \
-            bison \
-            patch \
-            texinfo \
-            automake \
-            autoconf \
-            libtool \
-            gettext \
-            cmake \
-            make \
-            libelf-dev \
-            lzma \
-            lzop \
-            u-boot-tools \
-            device-tree-compiler \
-            ccache \
-            pkg-config \
-            ca-certificates \
-            dos2unix \
-            libusb-1.0-0-dev \
-            libffi-dev
-          
-          # ✅ GCC 9.2 runtime loader dependencies (THE CRITICAL ONES)
-          sudo apt install -y \
-            libisl15 \
-            libmpc3 \
-            libmpfr6 \
-            libgmp10
-          
-          # ✅ Hard verification (fail fast if broken)
-          gcc --version
-            make --version
-            automake --version
-            autoconf --version
+          echo "GCC version:"
+          arm-linux-gcc --version || true
+          echo "Toolchain in container:"
+          ls -R /opt || true
+          uname -a
 
-      # ✅ Force bash as /bin/sh (Merlin requirement)
-      - name: Force bash as /bin/sh
-        run: |
-          sudo ln -sf /bin/bash /bin/sh
-          echo "Shell in use:"
-          /bin/sh --version || true
-
-      # ✅ Install OFFICIAL Merlin am-toolchains (HND / AX – Kernel 4.19)
-      - name: Install official Merlin am-toolchains
-        run: |
-          sudo mkdir -p /opt
-          cd /opt
-
-          echo "Cloning official am-toolchains..."
-          sudo git clone --depth 1 https://github.com/RMerl/am-toolchains.git
-
-          echo "Creating correct /opt/toolchains layout..."
-          sudo mkdir -p /opt/toolchains
-          sudo ln -s /opt/am-toolchains/brcm-arm-hnd /opt/toolchains/brcm-arm-hnd
-
-          echo "✅ Toolchain layout:"
-          ls -lah /opt/toolchains
-          ls -lah /opt/toolchains/brcm-arm-hnd
-
-          echo "✅ Registering toolchain paths..."
-          echo "/opt/toolchains/brcm-arm-hnd/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32/usr/bin" >> $GITHUB_PATH
-          echo "LD_LIBRARY_PATH=/opt/toolchains/brcm-arm-hnd/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32/usr/lib" >> $GITHUB_ENV
-
-      # ✅ Standard Merlin environment (SAFE, keep this)
-      - name: Setup build environment
-        run: |
-          echo "FORCE_UNSAFE_CONFIGURE=1" >> $GITHUB_ENV
-          echo "LANG=C" >> $GITHUB_ENV
-
-      # ✅ Build RT-AX58U_V2 firmware
+      # --- Build firmware ---
       - name: Build RT-AX58U_V2 firmware
         run: |
           cd release/src-rt-5.04axhnd.675x
           make RT-AX58U_V2 -j$(nproc)
 
-      # 🔍 Debug: locate firmware output
+      # --- List output files ---
       - name: Locate firmware output
         if: always()
         run: |
@@ -126,14 +42,14 @@ jobs:
           find release/src-rt-5.04axhnd.675x/image -type f 2>/dev/null || true
           echo "=============================="
 
-      # 📦 Upload firmware artifacts (NO symlink loops)
-      - name: Upload firmware artifacts
+      # --- Upload artifacts ---
+      - name: Upload firmware
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: RT-AX58U_V2-Firmware
           path: |
-            release/src-rt-5.04axhnd.675x/image/*.trx
             release/src-rt-5.04axhnd.675x/image/*.w
+            release/src-rt-5.04axhnd.675x/image/*.trx
             release/src-rt-5.04axhnd.675x/image/*.bin
           if-no-files-found: warn
