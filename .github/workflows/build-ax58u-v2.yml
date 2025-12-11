@@ -8,25 +8,33 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # --- CHECKOUT OUTSIDE THE CONTAINER ---
+      # --- CHECKOUT ---
       - name: Checkout source
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # --- Pull toolchain container ---
-      - name: Pull Gnuton toolchain image
+      # --- Fix permissions so Docker can write files ---
+      - name: Fix workspace permissions
         run: |
-          docker pull gnuton/asuswrt-merlin-toolchains-docker:20221206
+          sudo chmod -R 777 ${{ github.workspace }}
 
-      # --- Run build inside Docker container ---
-      - name: Build firmware inside toolchain container
+      # --- Pull toolchain container ---
+      - name: Pull Gnuton toolchain
+        run: docker pull gnuton/asuswrt-merlin-toolchains-docker:20221206
+
+      # --- Run the build ---
+      - name: Build inside container
         run: |
           docker run --rm \
             -v ${{ github.workspace }}:/build \
             -w /build \
             gnuton/asuswrt-merlin-toolchains-docker:20221206 \
             bash -c "
+              git config --global --add safe.directory /build
+
+              chmod -R 777 /build
+
               cd release/src-rt-5.04axhnd.675x &&
               make RT-AX58U_V2 -j$(nproc)
             "
