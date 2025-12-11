@@ -1,64 +1,33 @@
-name: Build RT-AX58U_V2 Firmware (Docker Toolchain Runner)
+name: Build RT-AX58U_V2 Firmware (Docker Toolchain)
 
 on:
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
-      # --- CHECKOUT ---
+
+      # -------------------------------------------------------
+      # 1. Checkout source
+      # -------------------------------------------------------
       - name: Checkout source
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # --- Fix permissions so Docker can write files ---
-    docker run --rm \
-      --user 0:0 \
-      -v ${{ github.workspace }}:/build:rw \
-      -w /build \
-      gnuton/asuswrt-merlin-toolchains-docker:20221206 \
-      bash -c "
-        git config --global --add safe.directory /build
-        cd release/src-rt-5.04axhnd.675x &&
-        make RT-AX58U_V2 -j$(nproc)
-      "
-
-
-      # --- Pull toolchain container ---
-      - name: Pull Gnuton toolchain
-        run: docker pull gnuton/asuswrt-merlin-toolchains-docker:20221206
-
-      # --- Run the build ---
-      - name: Build inside container
+      # -------------------------------------------------------
+      # 2. Ensure GitHub Workspace permissions inside Docker
+      # -------------------------------------------------------
+      - name: Fix ownership of workspace
         run: |
-          docker run --rm \
-            -v ${{ github.workspace }}:/build \
-            -w /build \
-            gnuton/asuswrt-merlin-toolchains-docker:20221206 \
-            bash -c "
-              git config --global --add safe.directory /build
+          sudo chown -R $USER:$USER ${{ github.workspace }}
 
-              chmod -R 777 /build
-
-              cd release/src-rt-5.04axhnd.675x &&
-              make RT-AX58U_V2 -j$(nproc)
-            "
-
-      # --- List output files ---
-      - name: Locate firmware
+      # -------------------------------------------------------
+      # 3. Prepare writable paths (ONLY required dirs)
+      # -------------------------------------------------------
+      - name: Prepare build directories
         run: |
-          find release/src-rt-5.04axhnd.675x/image -type f || true
-
-      # --- Upload artifacts ---
-      - name: Upload firmware
-        uses: actions/upload-artifact@v4
-        with:
-          name: RT-AX58U_V2-Firmware
-          path: |
-            release/src-rt-5.04axhnd.675x/image/*.w
-            release/src-rt-5.04axhnd.675x/image/*.trx
-            release/src-rt-5.04axhnd.675x/image/*.bin
-          if-no-files-found: warn
+          sudo chmod -R 777 release/src-rt-5.04axhnd.675x || true
+          sudo chmod -R 777 release/src/router || true
