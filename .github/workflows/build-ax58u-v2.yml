@@ -47,10 +47,28 @@ jobs:
           sudo chmod -R 777 release/src/router || true
           sudo chmod -R 777 build || true
 
+     # -------------------------------------------------------
+      # 4a. Create the symlink in the EXPECTED location (/opt/toolchains)
       # -------------------------------------------------------
-      # 4. Run gnuton's official Docker toolchain to build (FIXED)
+      - name: Create Toolchain Symlink in /opt (As Root)
+        run: |
+          docker run --rm \
+            -v $GITHUB_WORKSPACE:/build \
+            -w /build \
+            gnuton/asuswrt-merlin-toolchains-docker:20221206 \
+            bash -c "
+              echo 'Creating symlink in /opt/toolchains for make...'
+              # These commands run as root (default user)
+              mkdir -p /opt/toolchains
+              ln -sf \
+                /home/docker/am-toolchains/brcm-arm-hnd/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32 \
+                /opt/toolchains/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32
+            "
+
+       # -------------------------------------------------------
+      # 4b. Run gnuton's official Docker toolchain to build (As non-root)
       # -------------------------------------------------------
-      - name: Build firmware inside Docker
+      - name: Run Build inside Docker (As 1000:1000)
         run: |
           docker run --rm \
             --user 1000:1000 \
@@ -61,21 +79,14 @@ jobs:
               echo 'Adding safe Git directory...'
               git config --global --add safe.directory /build
 
-              echo 'Creating required symlink for Merlin toolchain...'
-              # FIX: Removed sudo and using /build/toolchains (writable location)
-              mkdir -p /build/toolchains
-              ln -sf \
-                /home/docker/am-toolchains/brcm-arm-hnd/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32 \
-                /build/toolchains/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32
-
               echo 'Export PATH so toolchain is found...'
-              # FIX: Updated PATH to reference the new location
-              export PATH=/build/toolchains/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32/usr/bin:\$PATH
+              # PATH must now point to the symlink location: /opt/toolchains
+              export PATH=/opt/toolchains/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32/usr/bin:\$PATH
 
               echo 'Entering tree and running make...'
               cd release/src-rt-5.04axhnd.675x
               make RT-AX58U_V2 -j2
-            "
+            "     
 
       # -------------------------------------------------------
       # 5. Debug output
