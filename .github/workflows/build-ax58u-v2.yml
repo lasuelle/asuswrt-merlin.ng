@@ -60,14 +60,14 @@ jobs:
               git config --global --add safe.directory /build
 
               echo 'Creating required symlink for Merlin toolchain...'
-              # --- REMOVE sudo AND CREATE IN /build/toolchains INSTEAD ---
+              # FIX: Remove sudo and use /build/toolchains
               mkdir -p /build/toolchains
               ln -sf \
                 /home/docker/am-toolchains/brcm-arm-hnd/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32 \
                 /build/toolchains/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32
 
               echo 'Export PATH so toolchain is found...'
-              # --- UPDATE PATH TO USE /build/toolchains ---
+              # FIX: Use the new path /build/toolchains
               export PATH=/build/toolchains/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32/usr/bin:\$PATH
 
               echo 'Entering tree and running make...'
