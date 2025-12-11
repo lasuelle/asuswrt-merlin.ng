@@ -45,7 +45,7 @@ jobs:
           sudo chmod -R 777 release/src/router || true
           sudo chmod -R 777 build || true
 
-      # -------------------------------------------------------
+# -------------------------------------------------------
       # 4. Run gnuton's official Docker toolchain to build
       # -------------------------------------------------------
       - name: Build firmware inside Docker
@@ -60,13 +60,15 @@ jobs:
               git config --global --add safe.directory /build
 
               echo 'Creating required symlink for Merlin toolchain...'
-              sudo mkdir -p /toolchains
-              sudo ln -sf \
+              # --- REMOVE sudo AND CREATE IN /build/toolchains INSTEAD ---
+              mkdir -p /build/toolchains
+              ln -sf \
                 /home/docker/am-toolchains/brcm-arm-hnd/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32 \
-                /toolchains/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32
+                /build/toolchains/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32
 
               echo 'Export PATH so toolchain is found...'
-              export PATH=/toolchains/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32/usr/bin:\$PATH
+              # --- UPDATE PATH TO USE /build/toolchains ---
+              export PATH=/build/toolchains/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32/usr/bin:\$PATH
 
               echo 'Entering tree and running make...'
               cd release/src-rt-5.04axhnd.675x
