@@ -31,3 +31,43 @@ jobs:
         run: |
           sudo chmod -R 777 release/src-rt-5.04axhnd.675x || true
           sudo chmod -R 777 release/src/router || true
+          sudo chmod -R 777 build || true
+
+      # -------------------------------------------------------
+      # 4. Run gnuton's official Docker toolchain to build
+      # -------------------------------------------------------
+      - name: Build firmware inside Docker
+        run: |
+          docker run --rm \
+            --user 0:0 \
+            -v ${{ github.workspace }}:/build:rw \
+            -w /build \
+            gnuton/asuswrt-merlin-toolchains-docker:20221206 \
+            bash -c "
+              git config --global --add safe.directory /build
+              cd release/src-rt-5.04axhnd.675x
+              make RT-AX58U_V2 -j\$(nproc)
+            "
+
+      # -------------------------------------------------------
+      # 5. Debug output
+      # -------------------------------------------------------
+      - name: List firmware output
+        if: always()
+        run: |
+          echo "== Firmware files =="
+          find release/src-rt-5.04axhnd.675x/image -type f || true
+
+      # -------------------------------------------------------
+      # 6. Upload resulting firmware
+      # -------------------------------------------------------
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RT-AX58U_V2-Firmware
+          path: |
+            release/src-rt-5.04axhnd.675x/image/*.w
+            release/src-rt-5.04axhnd.675x/image/*.bin
+            release/src-rt-5.04axhnd.675x/image/*.trx
+          if-no-files-found: warn
