@@ -48,55 +48,42 @@ jobs:
           sudo chmod -R 777 build || true
 
 # -------------------------------------------------------
-      # 4. Run gnuton's official Docker toolchain to build (FINAL FIX)
+      # 4. Run gnuton's official Docker toolchain to build (FINAL ATTEMPT)
       # -------------------------------------------------------
-      - name: Build firmware inside Docker (Final Toolchain Fix)
+      - name: Build firmware inside Docker (Final Fix)
         run: |
-          # 1. Create a directory to use as a temporary mount point
-          mkdir -p $GITHUB_WORKSPACE/opt_toolchains_temp
+          # 1. Prepare a temporary directory on the runner to serve as the /opt/toolchains mount point.
+          TOOLCHAINS_DIR=$GITHUB_WORKSPACE/opt_toolchains_override
+          mkdir -p $TOOLCHAINS_DIR
 
-          # 2. Run the build in ONE container instance
+          # 2. Run the container as root to create the necessary symlink in the mount point.
+          docker run --rm \
+            --user 0 \
+            -v $GITHUB_WORKSPACE:/build \
+            -w /build \
+            -v $TOOLCHAINS_DIR:/opt/toolchains \ # Mount the local dir to the required path
+            gnuton/asuswrt-merlin-toolchains-docker:20221206 \
+            bash -c "
+              echo 'Creating toolchain symlink inside the mounted /opt/toolchains...'
+              ln -sf \
+                /home/docker/am-toolchains/brcm-arm-hnd/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32 \
+                /opt/toolchains/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32
+            "
+
+          # 3. Run the main build as user 1000:1000, mounting the same path.
           docker run --rm \
             --user 1000:1000 \
             -v $GITHUB_WORKSPACE:/build \
             -w /build \
-            # Bind mount the temporary directory to the path the build system expects
-            -v $GITHUB_WORKSPACE/opt_toolchains_temp:/opt/toolchains \
+            -v $TOOLCHAINS_DIR:/opt/toolchains \ # Remount the same directory
             gnuton/asuswrt-merlin-toolchains-docker:20221206 \
             bash -c "
-              # The following commands MUST be run as root (or through sudo) to write to /opt/toolchains
-              # But since /opt/toolchains is now mounted to a writable path, we can use the non-root user IF
-              # the permissions on the mounted directory allow it. If not, we run as root (user 0) for setup.
-
-              echo 'Creating symlink in /opt/toolchains (via mount)...'
-              # The build system (make) runs as user 1000, but we need to create the symlink first.
-              # We will try to run the setup as root (user 0) first, then change user for the build.
-              
-              # Temporarily switch user to root to create the symlink in the mounted volume
-              # Note: Since the outer docker run command only has one user, we must do this as a separate run or...
-              
-              # --- REVERTING TO SEPARATE STEPS, BUT FIXING THE PERSISTENCE ---
-
-              # Let's fix the symlink inside the mounted GITHUB_WORKSPACE:
-              # This will persist across docker runs, but the makefile will still look at /opt/toolchains.
-              
               echo 'Adding safe Git directory...'
               git config --global --add safe.directory /build
               
-              # 1. Create the persistent symlink in the build directory
-              mkdir -p /build/toolchains
-              ln -sf \
-                /home/docker/am-toolchains/brcm-arm-hnd/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32 \
-                /build/toolchains/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32
+              echo 'Starting make. Toolchain should be available at /opt/toolchains/...'
+              export PATH=/opt/toolchains/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32/usr/bin:\$PATH
 
-              # 2. Use a second, temporary mount to tell the build system where the toolchain is
-              # This will only work if the build script checks an environment variable. 
-              # Since the log shows a HARDCODED path, this is the issue.
-
-              echo 'Toolchain path is hardcoded, attempting build with PATH set...'
-              export PATH=/build/toolchains/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32/usr/bin:\$PATH
-
-              echo 'Entering tree and running make...'
               cd release/src-rt-5.04axhnd.675x
               make RT-AX58U_V2 -j2
             "
