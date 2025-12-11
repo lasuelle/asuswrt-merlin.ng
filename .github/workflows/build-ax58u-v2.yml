@@ -56,8 +56,19 @@ jobs:
             -w /build \
             gnuton/asuswrt-merlin-toolchains-docker:20221206 \
             bash -c "
+              echo 'Adding safe Git directory...'
               git config --global --add safe.directory /build
-              export TOOLCHAIN_BASE=/toolchains
+
+              echo 'Creating required symlink for Merlin toolchain...'
+              sudo mkdir -p /toolchains
+              sudo ln -sf \
+                /home/docker/am-toolchains/brcm-arm-hnd/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32 \
+                /toolchains/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32
+
+              echo 'Export PATH so toolchain is found...'
+              export PATH=/toolchains/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32/usr/bin:\$PATH
+
+              echo 'Entering tree and running make...'
               cd release/src-rt-5.04axhnd.675x
               make RT-AX58U_V2 -j2
             "
