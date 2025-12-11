@@ -39,14 +39,14 @@ jobs:
       - name: Build firmware inside Docker
         run: |
           docker run --rm \
-            --user 0:0 \
-            -v ${{ github.workspace }}:/build:rw \
+            --user 1000:1000 \
+            -v $GITHUB_WORKSPACE:/build \
             -w /build \
             gnuton/asuswrt-merlin-toolchains-docker:20221206 \
             bash -c "
               git config --global --add safe.directory /build
               cd release/src-rt-5.04axhnd.675x
-              make RT-AX58U_V2 -j\$(nproc)
+              make RT-AX58U_V2 -j2
             "
 
       # -------------------------------------------------------
