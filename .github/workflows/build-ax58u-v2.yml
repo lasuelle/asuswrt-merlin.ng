@@ -45,6 +45,7 @@ jobs:
             gnuton/asuswrt-merlin-toolchains-docker:20221206 \
             bash -c "
               git config --global --add safe.directory /build
+              export TOOLCHAIN_BASE=/toolchains
               cd release/src-rt-5.04axhnd.675x
               make RT-AX58U_V2 -j2
             "
