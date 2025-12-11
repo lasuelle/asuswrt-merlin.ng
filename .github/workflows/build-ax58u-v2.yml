@@ -1,4 +1,4 @@
-name: Build RT-AX58U_V2 Firmware (Docker Environment)
+name: Build RT-AX58U_V2 Firmware (Docker Toolchain Runner)
 
 on:
   workflow_dispatch:
@@ -7,45 +7,38 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    # ⭐ Use Gnuton's official Merlin toolchain Docker build environment
-    container:
-      image: gnuton/asuswrt-merlin-toolchains-docker:20221206
-      options: --privileged
-
     steps:
-      # --- CHECKOUT ---
+      # --- CHECKOUT OUTSIDE THE CONTAINER ---
       - name: Checkout source
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # --- Confirm environment ---
-      - name: Verify toolchain and environment
+      # --- Pull toolchain container ---
+      - name: Pull Gnuton toolchain image
         run: |
-          echo "GCC version:"
-          arm-linux-gcc --version || true
-          echo "Toolchain in container:"
-          ls -R /opt || true
-          uname -a
+          docker pull gnuton/asuswrt-merlin-toolchains-docker:20221206
 
-      # --- Build firmware ---
-      - name: Build RT-AX58U_V2 firmware
+      # --- Run build inside Docker container ---
+      - name: Build firmware inside toolchain container
         run: |
-          cd release/src-rt-5.04axhnd.675x
-          make RT-AX58U_V2 -j$(nproc)
+          docker run --rm \
+            -v ${{ github.workspace }}:/build \
+            -w /build \
+            gnuton/asuswrt-merlin-toolchains-docker:20221206 \
+            bash -c "
+              cd release/src-rt-5.04axhnd.675x &&
+              make RT-AX58U_V2 -j$(nproc)
+            "
 
       # --- List output files ---
-      - name: Locate firmware output
-        if: always()
+      - name: Locate firmware
         run: |
-          echo "==== Firmware files found ===="
-          find release/src-rt-5.04axhnd.675x/image -type f 2>/dev/null || true
-          echo "=============================="
+          find release/src-rt-5.04axhnd.675x/image -type f || true
 
       # --- Upload artifacts ---
       - name: Upload firmware
         uses: actions/upload-artifact@v4
-        if: always()
         with:
           name: RT-AX58U_V2-Firmware
           path: |
