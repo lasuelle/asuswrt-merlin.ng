@@ -23,30 +23,32 @@ jobs:
       - name: Fix ownership of workspace
         run: |
           sudo chown -R $USER:$USER ${{ github.workspace }}
-     
       
-      - name: Dump docker filesystem to find toolchain location
+      - name: Dump docker filesystem to find toolchain location (Sanitized)
         run: |
           docker run --rm gnuton/asuswrt-merlin-toolchains-docker:20221206 \
             bash -c "
               echo '--- Listing / ---'
               ls -lh /
               echo '--- Searching for gcc ---'
-              find / -type f -name 'arm*-gcc' 2>/dev/null
+              # Added || true to prevent failure on permission errors
+              find / -type f -name 'arm*-gcc' 2>/dev/null || true
               echo '--- Searching crosstools dirs ---'
-              find / -maxdepth 5 -type d -name 'crosstools*' 2>/dev/null
+              find / -maxdepth 5 -type d -name 'crosstools*' 2>/dev/null || true
             "
+
       # -------------------------------------------------------
       # 3. Prepare writable paths (ONLY required dirs)
       # -------------------------------------------------------
       - name: Prepare build directories
         run: |
+          # These are run on the GitHub runner, so sudo is still appropriate here
           sudo chmod -R 777 release/src-rt-5.04axhnd.675x || true
           sudo chmod -R 777 release/src/router || true
           sudo chmod -R 777 build || true
 
-# -------------------------------------------------------
-      # 4. Run gnuton's official Docker toolchain to build
+      # -------------------------------------------------------
+      # 4. Run gnuton's official Docker toolchain to build (FIXED)
       # -------------------------------------------------------
       - name: Build firmware inside Docker
         run: |
@@ -60,20 +62,21 @@ jobs:
               git config --global --add safe.directory /build
 
               echo 'Creating required symlink for Merlin toolchain...'
-              # FIX: Create in /build/toolchains and remove sudo
+              # FIX: Removed sudo and using /build/toolchains (writable location)
               mkdir -p /build/toolchains
               ln -sf \
                 /home/docker/am-toolchains/brcm-arm-hnd/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32 \
                 /build/toolchains/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32
 
               echo 'Export PATH so toolchain is found...'
-              # FIX: Update PATH to reference /build/toolchains
+              # FIX: Updated PATH to reference the new location
               export PATH=/build/toolchains/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32/usr/bin:\$PATH
 
               echo 'Entering tree and running make...'
               cd release/src-rt-5.04axhnd.675x
               make RT-AX58U_V2 -j2
             "
+
       # -------------------------------------------------------
       # 5. Debug output
       # -------------------------------------------------------
