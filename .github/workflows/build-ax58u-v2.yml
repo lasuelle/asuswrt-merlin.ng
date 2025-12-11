@@ -15,9 +15,17 @@ jobs:
           fetch-depth: 0
 
       # --- Fix permissions so Docker can write files ---
-      - name: Fix workspace permissions
-        run: |
-          sudo chmod -R 777 ${{ github.workspace }}
+    docker run --rm \
+      --user 0:0 \
+      -v ${{ github.workspace }}:/build:rw \
+      -w /build \
+      gnuton/asuswrt-merlin-toolchains-docker:20221206 \
+      bash -c "
+        git config --global --add safe.directory /build
+        cd release/src-rt-5.04axhnd.675x &&
+        make RT-AX58U_V2 -j$(nproc)
+      "
+
 
       # --- Pull toolchain container ---
       - name: Pull Gnuton toolchain
