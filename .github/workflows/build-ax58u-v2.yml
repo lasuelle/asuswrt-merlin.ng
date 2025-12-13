@@ -1,112 +1,191 @@
-name: Build RT-AX58U_V2 Firmware (Docker Toolchain)
-
-on:
-  workflow_dispatch:
+name: Images
+run-name: "Building rt-ax58u_v2 image 🚀"
+on: [push, pull_request]
 
 jobs:
-  build:
-    runs-on: ubuntu-22.04
-
+  build-job:
+    name: Build rt-ax58u_v2
+    runs-on: ubuntu-latest
+    
+    # Restrict the matrix to only the desired model: rt-ax58u_v2
+    strategy:
+      fail-fast: false
+      matrix:
+        cfg:
+          - { model: "rt-ax58u_v2", sdk: "src-rt-5.04axhnd.675x", ui: "default", skip: false }
+          
+    container:
+      image: gnuton/asuswrt-merlin-toolchains-docker:latest
+      env:
+        MERLINUPDATE: "y"
+        MODEL: ${{ matrix.cfg.model }}
+        SDK: ${{ matrix.cfg.sdk }}
+        UI: ${{ matrix.cfg.ui }}
+        SKIP_BUILD: ${{ matrix.cfg.skip }}
+        GIT_REPO: "https://github.com/gnuton/asuswrt-merlin.ng.git"
+        PROJECT_DIR: "/project/asuswrt-merlin.ng"
+        ARTIFACTS_DIR: "/project/artifacts"
+        CHANGELOG_FILE: "/tmp/CHANGELOG"
+        PROJECTBASEDIR: "/project"
+      options: --user docker
+      volumes:
+        - /mnt:/project # HACK: Use /mnt partition since bigger than others. This prevents to run out of space
+        
     steps:
-
-      # -------------------------------------------------------
-      # 1. Checkout source
-      # -------------------------------------------------------
-      - name: Checkout source
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      # -------------------------------------------------------
-      # 2. Ensure GitHub Workspace permissions inside Docker
-      # -------------------------------------------------------
-      - name: Fix ownership of workspace
+      - name: Run debug commands - post
         run: |
-          sudo chown -R $USER:$USER ${{ github.workspace }}
-      
-      - name: Dump docker filesystem to find toolchain location (Sanitized)
+          cd /
+          echo "--- Disk available ----"
+          df -h
+          
+      - name: Fix permissions in docker image
+        if: matrix.cfg.skip == false
         run: |
-          docker run --rm gnuton/asuswrt-merlin-toolchains-docker:20221206 \
-            bash -c "
-              echo '--- Listing / ---'
-              ls -lh /
-              echo '--- Searching for gcc ---'
-              # Added || true to prevent failure on permission errors
-              find / -type f -name 'arm*-gcc' 2>/dev/null || true
-              echo '--- Searching crosstools dirs ---'
-              find / -maxdepth 5 -type d -name 'crosstools*' 2>/dev/null || true
-            "
-
-      # -------------------------------------------------------
-      # 3. Prepare writable paths (ONLY required dirs)
-      # -------------------------------------------------------
-      - name: Prepare build directories
+          sudo chown -R docker:docker /github/home /home/docker /project
+          
+      - name: "Fetch code"
+        if: matrix.cfg.skip == false
         run: |
-          # These are run on the GitHub runner, so sudo is still appropriate here
-          sudo chmod -R 777 release/src-rt-5.04axhnd.675x || true
-          sudo chmod -R 777 release/src/router || true
-          sudo chmod -R 777 build || true
+          cd /project
+          if [[ $SKIP_BUILD == "true" ]]; then
+            echo "Skipping build!"
+            exit 0
+          fi
+          
+          if [[ $GITHUB_REF_TYPE == "tag" ]]; then
+              export TAG="${GITHUB_REF#refs/tags/}"
+              echo "Fetching code from tag $TAG"
+          else
+              export BRANCH="${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
+              echo "Fetching code from branch $BRANCH"
+          fi
 
-# -------------------------------------------------------
-      # 4. Run gnuton's official Docker toolchain to build (FINAL ATTEMPT)
-      # -------------------------------------------------------
-      - name: Build firmware inside Docker (Final Fix)
+          if git clone --depth 1 --branch "${TAG:-$BRANCH}" "$GIT_REPO"; then
+              echo "Code fetched successfully."
+          else
+              echo "Failed to fetch code. Check the repository and settings."
+              exit 1
+          fi
+
+          ls /home/docker
+          
+      - name: "Set version"
+        if: matrix.cfg.skip == false
         run: |
-          # 1. Prepare a temporary directory on the runner to serve as the /opt/toolchains mount point.
-          TOOLCHAINS_DIR=$GITHUB_WORKSPACE/opt_toolchains_override
-          mkdir -p $TOOLCHAINS_DIR
-
-          # 2. Run the container as root to create the necessary symlink in the mount point.
-          docker run --rm \
-            --user 0 \
-            -v $GITHUB_WORKSPACE:/build \
-            -w /build \
-            -v $TOOLCHAINS_DIR:/opt/toolchains \ # Mount the local dir to the required path
-            gnuton/asuswrt-merlin-toolchains-docker:20221206 \
-            bash -c "
-              echo 'Creating toolchain symlink inside the mounted /opt/toolchains...'
-              ln -sf \
-                /home/docker/am-toolchains/brcm-arm-hnd/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32 \
-                /opt/toolchains/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32
-            "
-
-          # 3. Run the main build as user 1000:1000, mounting the same path.
-          docker run --rm \
-            --user 1000:1000 \
-            -v $GITHUB_WORKSPACE:/build \
-            -w /build \
-            -v $TOOLCHAINS_DIR:/opt/toolchains \ # Remount the same directory
-            gnuton/asuswrt-merlin-toolchains-docker:20221206 \
-            bash -c "
-              echo 'Adding safe Git directory...'
-              git config --global --add safe.directory /build
-              
-              echo 'Starting make. Toolchain should be available at /opt/toolchains/...'
-              export PATH=/opt/toolchains/crosstools-arm-gcc-9.2-linux-4.19-glibc-2.30-binutils-2.32/usr/bin:\$PATH
-
-              cd release/src-rt-5.04axhnd.675x
-              make RT-AX58U_V2 -j2
-            "
-
-      # -------------------------------------------------------
-      # 5. Debug output
-      # -------------------------------------------------------
-      - name: List firmware output
-        if: always()
+          if [[ $SKIP_BUILD == "true" ]]; then
+            echo "Skipping build!"
+            exit 0
+          fi
+          
+          cd ${PROJECT_DIR}
+          export CIRCLE_TAG="${GITHUB_REF#refs/*/}"
+          if [[ $GITHUB_REF_TYPE == "branch" ]]; then
+            echo "Nothing to do. Not a release. Branch detected: ${CIRCLE_TAG}"
+          else
+            TAG=$(echo ${CIRCLE_TAG} | sed 's/^[^.]*\.//')
+            MAJOR_VER=$(echo "${TAG}" | sed -E 's/([0-9.]*)[_-]?(.*)/\1/')
+            MINOR_VER=$(echo "${TAG}" | sed -E 's/([0-9.]*)[_-]?(.*)/\2/')
+            sed -i "s/SERIALNO=.*/SERIALNO=${MAJOR_VER}/g" release/src-rt/version.conf
+            sed -i "s/EXTENDNO=.*/EXTENDNO=${MINOR_VER}/g" release/src-rt/version.conf
+            echo "Release detected. Updating version.conf with MAJOR_VER=${MAJOR_VER} and MINOR_VER=${MINOR_VER}"
+          fi
+          
+      - name: Generate changelog
+        if: matrix.cfg.skip == false
         run: |
-          echo "== Firmware files =="
-          find release/src-rt-5.04axhnd.675x/image -type f || true
+          if [[ $SKIP_BUILD == "true" ]]; then
+            echo "Skipping build!"
+            exit 0
+          fi
+          cd ${PROJECT_DIR}
+          # This command is left in case you still want a changelog file, even if it's not being used for manifest/release.
+          python tools/get-last-notes.py > "${CHANGELOG_FILE}"
+          cat "${CHANGELOG_FILE}"
+          
+      - name: "Build"
+        if: matrix.cfg.skip == false
+        run: |
+          if [[ $SKIP_BUILD == "true" ]]; then
+            echo "Skipping build!"
+            exit 0
+          fi
+          echo "----- Space available -----"
+          df -h
+          echo "----- I am: $(id) -----"
+          cd ${PROJECT_DIR}/release/${SDK}
+          echo "----- Files in dir: $(pwd) -----"
+          ls -alh
+          
+          echo "----- Setting toolchains for ${SDK} -----"
+          if [[ ${SDK} == "src-rt-5.04axhnd.675x" ]]; then
+            source /home/docker/envs/bcm-hnd-ax-4.19.sh
+          # The following elif blocks are no longer strictly needed but are harmless, 
+          # as the matrix only contains src-rt-5.04axhnd.675x.
+          # elif [[ ${SDK} == "src-rt-5.02axhnd.675x" ]]; then
+          #   source /home/docker/envs/bcm-hnd.sh
+          # elif [[ ${SDK} == "src-rt-5.02axhnd" ]]; then
+          #   source /home/docker/envs/bcm-hnd.sh
+          else
+            echo "SDK not supported"
+            exit -1
+          fi
+          
+          echo "----- hack-ish fix ---------"
+          sudo ln -sf /home/docker/am-toolchains/brcm-arm-hnd /opt/toolchains
+          echo "----- Check envs dir ---------"
+          ls -alh /home/docker/envs/
+          echo "----- Debugging env vars -----"
+          env
+          
+          echo "------ Setting UI as $UI ---------"
+          # The TUF UI logic is left, though 'default' is used for rt-ax58u_v2
+          if [[ ${UI} == "tuf" ]]; then
+            echo "Enabling TUF UI"
+            sed -i 's/TUF_UI=n/TUF_UI=y/' ${PROJECT_DIR}/release/src-rt/target.mak
+          fi
 
-      # -------------------------------------------------------
-      # 6. Upload resulting firmware
-      # -------------------------------------------------------
-      - name: Upload firmware artifacts
+          echo "----- BUILD ${MODEL}-----"
+          make "${MODEL}"
+
+      - name: "Prepare artifacts"
+        if: matrix.cfg.skip == false
+        run: |
+          if [[ $SKIP_BUILD == "true" ]]; then
+            echo "Skipping build!"
+            exit 0
+          fi
+          mkdir -p "${ARTIFACTS_DIR}"
+          export IMAGE_PATH=${PROJECT_DIR}/release/${SDK}/image/
+          echo "Removing images with boot loader."
+          rm -rf ${IMAGE_PATH}/*cferom*
+
+          files=("${IMAGE_PATH}"/*squashfs.pkgtb "${IMAGE_PATH}"/*.w)
+
+          if [ ${#files[@]} -gt 0 ]; then
+            for f in "${files[@]}"; do
+              if [ -f "$f" ] && [ "${f##*.}" != "md5" ]; then
+                echo "Creating MD5 signature for $f"
+                md5sum "$f" > "$f.md5"
+                echo "Copying image $f to workspace"
+                cp "$f" "${ARTIFACTS_DIR}"
+                cp "$f.md5" "${ARTIFACTS_DIR}"
+              fi
+            done
+          else
+            echo "No *.squashfs.pkgtb or *.w files found in ${IMAGE_PATH}"
+          fi
+          
+          # Simplified: Only copy changelog if it exists, no more DSL-AX82U check
+          if [ -f "${CHANGELOG_FILE}" ]; then
+            cp "${CHANGELOG_FILE}" "${ARTIFACTS_DIR}"
+          fi
+          
+      - name: "Archive artifacts"
+        if: matrix.cfg.skip == false
         uses: actions/upload-artifact@v4
-        if: always()
         with:
-          name: RT-AX58U_V2-Firmware
-          path: |
-            release/src-rt-5.04axhnd.675x/image/*.w
-            release/src-rt-5.04axhnd.675x/image/*.bin
-            release/src-rt-5.04axhnd.675x/image/*.trx
-          if-no-files-found: warn
+          name: release-${{ matrix.cfg.model }}-${{ matrix.cfg.ui }}
+          path: "/project/artifacts"
+        continue-on-error: true
+
+# The 'release-job' and 'manifest-job' have been removed as requested for a "clean up to just build" flow.
